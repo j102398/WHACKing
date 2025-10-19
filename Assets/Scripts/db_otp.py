@@ -69,15 +69,21 @@ def create_json_files(email):
     # Sanitize email to create a valid filename
     safe_email = email.replace('@', '_at_').replace('.', '_')
 
-    # Get the script's directory (WHACKing/assets/script)
+    # Get the script's directory (WHACKing/Assets/Scripts)
     script_dir = os.path.dirname(os.path.abspath(__file__))
 
     # Navigate to WHACKing directory (two levels up)
     whacking_dir = os.path.join(script_dir, '..', '..')
 
+    # Navigate to UserData directory
+    user_data_dir = os.path.join(whacking_dir, 'UserData')
+
+    # Create UserData directory if it doesn't exist
+    os.makedirs(user_data_dir, exist_ok=True)
+
     # Define file paths
-    template_file = os.path.join(whacking_dir, 'map_state.json')
-    user_file = os.path.join(whacking_dir, f'map_state_{safe_email}.json')
+    template_file = os.path.join(user_data_dir, 'map_state.json')
+    user_file = os.path.join(user_data_dir, f'map_state_{safe_email}.json')
 
     # Check if user-specific file already exists
     if not os.path.exists(user_file):
