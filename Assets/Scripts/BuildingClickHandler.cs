@@ -18,6 +18,10 @@ public class BuildingClickHandler : MonoBehaviour
                 {
                     infoText.text = $"Date: {info.builtDate}\nSpent On: {info.spentOn}\nSpent: £{info.spentAmount}";
                 }
+                else
+                {
+                    Debug.Log("no data for this");
+                }
             }
             else
             {

@@ -19,20 +19,45 @@ public class LoginManager : MonoBehaviour
     public Button verifyOTPButton;
     public TMP_Text otpErrorText;
 
+    [Header("Credit Score Selection Screen")]
+    public GameObject creditScoreScreen;
+    public Button badCreditButton;
+    public Button averageCreditButton;
+    public Button goodCreditButton;
+    public TMP_Text creditScoreErrorText;
+
     // --- Configuration for Python Script ---
     private const string PythonPath = "python"; 
     private const string ScriptFileName = "Assets/Scripts/db_otp.py";
     private const string OTPFilePath = "Assets/otp.txt";
+    
+    // --- Credit Score Template Files ---
+    private const string BadCreditTemplate = "bad_spending.json";
+    private const string AverageCreditTemplate = "average_spending.json";
+    private const string GoodCreditTemplate = "excellent_spending.json";
+    private const string UserDataFolder = "UserData/";
 
     private string currentEmail;
+    private string selectedCreditScore;
 
     void Start()
     {
         // Setup button listeners
         sendOTPButton.onClick.AddListener(HandleEmailSubmit);
         verifyOTPButton.onClick.AddListener(HandleOTPVerify);
+        
+        // Credit score button listeners
+        badCreditButton.onClick.AddListener(() => HandleCreditScoreSelection("bad"));
+        averageCreditButton.onClick.AddListener(() => HandleCreditScoreSelection("average"));
+        goodCreditButton.onClick.AddListener(() => HandleCreditScoreSelection("good"));
 
-        // Show email screen first, hide OTP screen
+        // Ensure UserData folder exists
+        if (!Directory.Exists(UserDataFolder))
+        {
+            Directory.CreateDirectory(UserDataFolder);
+        }
+
+        // Show email screen first
         ShowEmailScreen();
     }
 
@@ -40,6 +65,7 @@ public class LoginManager : MonoBehaviour
     {
         emailScreen.SetActive(true);
         otpScreen.SetActive(false);
+        creditScoreScreen.SetActive(false);
         emailErrorText.text = "";
         emailField.text = "";
     }
@@ -48,8 +74,17 @@ public class LoginManager : MonoBehaviour
     {
         emailScreen.SetActive(false);
         otpScreen.SetActive(true);
+        creditScoreScreen.SetActive(false);
         otpErrorText.text = "";
         otpField.text = "";
+    }
+
+    void ShowCreditScoreScreen()
+    {
+        emailScreen.SetActive(false);
+        otpScreen.SetActive(false);
+        creditScoreScreen.SetActive(true);
+        creditScoreErrorText.text = "";
     }
 
     void HandleEmailSubmit()
@@ -107,18 +142,97 @@ public class LoginManager : MonoBehaviour
         // Compare OTPs
         if (enteredOTP.Trim() == correctOTP.Trim())
         {
-            // OTP is correct, proceed to next scene
+            // OTP is correct, proceed to credit score selection
             otpErrorText.text = "";
 
             // Clean up the OTP file for security
             CleanupOTPFile();
 
-            SceneManager.LoadScene("City");
+            // Show credit score selection screen
+            ShowCreditScoreScreen();
         }
         else
         {
             otpErrorText.text = "Invalid OTP. Please try again.";
         }
+    }
+
+    void HandleCreditScoreSelection(string creditScore)
+    {
+        selectedCreditScore = creditScore;
+
+        // Create user-specific file based on credit score
+        bool fileCreated = CreateUserFile(currentEmail, creditScore);
+
+        if (fileCreated)
+        {
+            creditScoreErrorText.text = "";
+            
+            // Save the current user email to PlayerPrefs for later access
+            PlayerPrefs.SetString("CurrentUserEmail", currentEmail);
+            PlayerPrefs.SetString("CurrentUserCreditScore", creditScore);
+            PlayerPrefs.Save();
+
+            // Load the main game scene
+            SceneManager.LoadScene("City");
+        }
+        else
+        {
+            creditScoreErrorText.text = "Error creating user profile. Please try again.";
+        }
+    }
+
+    bool CreateUserFile(string email, string creditScore)
+    {
+        try
+        {
+            // Determine which template to use
+            string templatePath = "";
+            switch (creditScore)
+            {
+                case "bad":
+                    templatePath = BadCreditTemplate;
+                    break;
+                case "average":
+                    templatePath = AverageCreditTemplate;
+                    break;
+                case "good":
+                    templatePath = GoodCreditTemplate;
+                    break;
+                default:
+                    UnityEngine.Debug.LogError("Invalid credit score selection.");
+                    return false;
+            }
+
+            // Check if template exists
+            if (!File.Exists(templatePath))
+            {
+                UnityEngine.Debug.LogError($"Template file not found: {templatePath}");
+                return false;
+            }
+
+            // Create unique filename based on email (sanitize email for filename)
+            string sanitizedEmail = SanitizeEmailForFilename(email);
+            string userFilePath = Path.Combine(UserDataFolder, $"{sanitizedEmail}_data.json");
+
+            // Copy template to user file
+            File.Copy(templatePath, userFilePath, overwrite: true);
+
+            UnityEngine.Debug.Log($"User file created: {userFilePath}");
+            return true;
+        }
+        catch (System.Exception ex)
+        {
+            UnityEngine.Debug.LogError($"Error creating user file: {ex.Message}");
+            return false;
+        }
+    }
+
+    string SanitizeEmailForFilename(string email)
+    {
+        // Replace invalid filename characters with underscores
+        string sanitized = email.Replace("@", "_at_").Replace(".", "_");
+        return sanitized;
     }
 
     bool RunPythonScript(string email)
@@ -133,7 +247,7 @@ public class LoginManager : MonoBehaviour
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             CreateNoWindow = true,
-            WorkingDirectory = Application.dataPath // ensures correct relative paths
+            WorkingDirectory = Application.dataPath
         };
 
         try

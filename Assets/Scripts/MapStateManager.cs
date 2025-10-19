@@ -135,10 +135,27 @@ public class MapStateManager : MonoBehaviour
                 }
 
                 if (prefab != null)
-                    Instantiate(prefab, position, Quaternion.identity);
+                {
+                    GameObject obj = Instantiate(prefab, position, Quaternion.identity);
+                    var info = obj.AddComponent<BuildingInfo>();
+                    info.buildingType = cell;
+                    info.builtDate = DateTime.Now.ToString("yyyy-MM-dd");
+                    info.spentOn = GetSpentOnFromType(cell);
+                    info.spentAmount = UnityEngine.Random.Range(100f, 1000f);
+                }
             }
         }
     }
+    string GetSpentOnFromType(string type) { 
+        switch (type) { 
+            case "M": return "Eating Out"; 
+            case "W": return "Online Shopping"; 
+            case "F": return "Shein"; 
+            case "N": return "Nightlife"; 
+            case "T": return "Groceries"; 
+            case "S": return "Retail Shopping"; 
+            case "H": return "Rent"; 
+            default: return "Misc"; } }
 
     public GameState PlaceHouse(GameState state)
     {
